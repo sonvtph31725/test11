@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo Search Product</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      text-align: center;
+    }
+    #camera-container {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      margin: auto;
+    }
+    video {
+      width: 100%;
+      border-radius: 10px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 12px 20px;
+      font-size: 16px;
+      background: #ff6600;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #aaa;
+    }
+    #results {
+      margin-top: 20px;
+    }
+    .item {
+      background: white;
+      border-radius: 10px;
+      margin: 10px auto;
+      padding: 10px;
+      max-width: 500px;
+      text-align: left;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .item img {
+      width: 100%;
+      border-radius: 8px;
+    }
+    .item h3 {
+      margin: 10px 0 5px;
+      font-size: 18px;
+      color: #333;
+    }
+    .item p {
+      margin: 2px 0;
+      font-size: 14px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h2>📸 Tìm sản phẩm bằng Camera</h2>
+  <div id="camera-container">
+    <video id="camera" autoplay playsinline></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+  </div>
+  <button id="capture">📷 Chụp & Tìm kiếm</button>
+
+  <div id="results"></div>
+
+  <script>
+    const video = document.getElementById("camera");
+    const canvas = document.getElementById("canvas");
+    const captureBtn = document.getElementById("capture");
+    const resultsDiv = document.getElementById("results");
+
+    // Auto bật camera
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = stream;
+      } catch (err) {
+        alert("Không thể mở camera: " + err);
+      }
+    }
+    startCamera();
+
+    captureBtn.addEventListener("click", async () => {
+      captureBtn.disabled = true;
+      captureBtn.innerText = "⏳ Đang tìm...";
+
+      // Chụp ảnh từ video
+      const ctx = canvas.getContext("2d");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg"));
+
+      // Gửi ảnh lên API backend
+      const formData = new FormData();
+      formData.append("image", blob, "capture.jpg");
+      formData.append("k", "5"); // số kết quả muốn lấy
+
+      const API_URL = "https://goat-consequences-routers-infrastructure.trycloudflare.com";
+
+const resp = await fetch("https://vid-similarly-conf-prominent.trycloudflare.com/api/search", {
+  method: "POST",
+  body: formData
+});
+
+
+  console.log("Response status:", resp.status);
+
+  if (!resp.ok) {
+    throw new Error("HTTP error! Status: " + resp.status);
+  }
+
+  const data = await resp.json();
+  console.log("Response data:", data);
+
+  resultsDiv.innerHTML = "<h3>Kết quả:</h3>";
+  if (data.objects && data.objects.length > 0) {
+    data.objects.forEach(obj => {
+      obj.matches.forEach(item => {
+        resultsDiv.innerHTML += `
+          <div class="item">
+            <img src="${item.image_path}" alt="product">
+            <h3>${item.title}</h3>
+            <p>💰 Giá: ${item.price} đ</p>
+            <p>📊 Score: ${item.score.toFixed(2)}</p>
+          </div>
+        `;
+      });
+    });
+  } else {
+    resultsDiv.innerHTML += "<p>❌ Không tìm thấy sản phẩm phù hợp</p>";
+  }
+} catch (e) {
+  console.error("Fetch error:", e);
+  alert("Lỗi khi gọi API: " + e);
+}
+
+
+      captureBtn.disabled = false;
+      captureBtn.innerText = "📷 Chụp & Tìm kiếm";
+    });
+  </script>
+</body>
+</html>
