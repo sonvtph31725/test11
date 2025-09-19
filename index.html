@@ -138,8 +138,7 @@
           data.results.forEach(item => {
             resultsDiv.innerHTML += `
       <div class="item">
-        <img src="${item.image_path}" alt="product">
-        <h3>${item.title}</h3>
+        <h3>🔎 Sản phẩm: ${item.title}</h3>
         <p>💰 Giá: ${item.price ?? "N/A"} đ</p>
         <p>📊 Score: ${item.score.toFixed(2)}</p>
       </div>
@@ -148,6 +147,7 @@
         } else {
           resultsDiv.innerHTML += "<p>❌ Không tìm thấy sản phẩm phù hợp</p>";
         }
+
 
       } catch (e) {
         console.error("Fetch error:", e);
