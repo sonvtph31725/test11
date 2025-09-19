@@ -54,11 +54,6 @@
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     }
 
-    .item img {
-      width: 100%;
-      border-radius: 8px;
-    }
-
     .item h3 {
       margin: 10px 0 5px;
       font-size: 18px;
@@ -124,30 +119,32 @@
           body: formData
         });
 
-        console.log("Response status:", resp.status);
-
-        if (!resp.ok) {
-          throw new Error("HTTP error! Status: " + resp.status);
-        }
+        if (!resp.ok) throw new Error("HTTP error! Status: " + resp.status);
 
         const data = await resp.json();
         console.log("Response data:", data);
 
         resultsDiv.innerHTML = "<h3>Kết quả:</h3>";
+
+        // Hiển thị object YOLO phát hiện
+        if (data.detected_objects && data.detected_objects.length > 0) {
+          resultsDiv.innerHTML += `<p>🔎 YOLO phát hiện: ${data.detected_objects.join(", ")}</p>`;
+        }
+
+        // Hiển thị sản phẩm tìm được
         if (data.results && data.results.length > 0) {
           data.results.forEach(item => {
             resultsDiv.innerHTML += `
-      <div class="item">
-        <h3>🔎 Sản phẩm: ${item.title}</h3>
-        <p>💰 Giá: ${item.price ?? "N/A"} đ</p>
-        <p>📊 Score: ${item.score.toFixed(2)}</p>
-      </div>
-    `;
+              <div class="item">
+                <h3>Sản phẩm: ${item.title}</h3>
+                <p>💰 Giá: ${item.price ?? "N/A"} đ</p>
+                <p>📊 Score: ${item.score.toFixed(2)}</p>
+              </div>
+            `;
           });
         } else {
           resultsDiv.innerHTML += "<p>❌ Không tìm thấy sản phẩm phù hợp</p>";
         }
-
 
       } catch (e) {
         console.error("Fetch error:", e);
@@ -160,5 +157,4 @@
   </script>
 
 </body>
-
 </html>
