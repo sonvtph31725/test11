@@ -20,9 +20,19 @@
       margin: auto;
     }
 
-    video {
+    #camera {
       width: 100%;
       border-radius: 10px;
+      display: block;
+    }
+
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
     }
 
     button {
@@ -65,6 +75,12 @@
       font-size: 14px;
       color: #555;
     }
+
+    .item img {
+      margin-top: 8px;
+      border-radius: 6px;
+      max-width: 100%;
+    }
   </style>
 </head>
 
@@ -72,19 +88,19 @@
   <h2>📸 Tìm sản phẩm bằng Camera</h2>
   <div id="camera-container">
     <video id="camera" autoplay playsinline></video>
-    <canvas id="canvas" style="display:none;"></canvas>
+    <canvas id="overlay"></canvas>
   </div>
+
   <button id="capture">📷 Chụp & Tìm kiếm</button>
 
   <div id="results"></div>
 
   <script>
     const video = document.getElementById("camera");
-    const canvas = document.getElementById("canvas");
+    const canvas = document.getElementById("overlay");
     const captureBtn = document.getElementById("capture");
     const resultsDiv = document.getElementById("results");
 
-    // Auto bật camera
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
@@ -99,26 +115,19 @@
       captureBtn.disabled = true;
       captureBtn.innerText = "⏳ Đang tìm...";
 
-      // Chụp ảnh từ video
       const ctx = canvas.getContext("2d");
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg"));
-
-      // Gửi ảnh lên API backend
       const formData = new FormData();
       formData.append("image", blob, "capture.jpg");
-      formData.append("k", "5"); // số kết quả muốn lấy
+      formData.append("k", "5");
 
       try {
         const API_URL = "https://generous-bits-rick-maui.trycloudflare.com/api/search";
-        const resp = await fetch(API_URL, {
-          method: "POST",
-          body: formData
-        });
-
+        const resp = await fetch(API_URL, { method: "POST", body: formData });
         if (!resp.ok) throw new Error("HTTP error! Status: " + resp.status);
 
         const data = await resp.json();
@@ -126,12 +135,23 @@
 
         resultsDiv.innerHTML = "<h3>Kết quả:</h3>";
 
-        // Hiển thị object YOLO phát hiện
-        if (data.detected_objects && data.detected_objects.length > 0) {
-          resultsDiv.innerHTML += `<p>🔎 YOLO phát hiện: ${data.detected_objects.join(", ")}</p>`;
+        // Hiển thị YOLO detections
+        if (data.detections && data.detections.length > 0) {
+          data.detections.forEach(det => {
+            resultsDiv.innerHTML += `<p>🔎 ${det.class} (${det.score.toFixed(2)}) bbox: ${det.bbox}</p>`;
+          });
         }
 
-        // Hiển thị sản phẩm tìm được
+        // Hiển thị overlay_image
+        if (data.overlay_image) {
+          resultsDiv.innerHTML += `
+            <div>
+              <h3>Ảnh camera có bbox:</h3>
+              <img src="${data.overlay_image}" />
+            </div>`;
+        }
+
+        // Hiển thị sản phẩm từ DB
         if (data.results && data.results.length > 0) {
           data.results.forEach(item => {
             resultsDiv.innerHTML += `
@@ -139,11 +159,10 @@
                 <h3>Sản phẩm: ${item.title}</h3>
                 <p>💰 Giá: ${item.price ?? "N/A"} đ</p>
                 <p>📊 Score: ${item.score.toFixed(2)}</p>
+                ${item.image_path ? `<img src="${item.image_path}" />` : ""}
               </div>
             `;
           });
-        } else {
-          resultsDiv.innerHTML += "<p></p>";
         }
 
       } catch (e) {
@@ -157,4 +176,5 @@
   </script>
 
 </body>
+
 </html>
